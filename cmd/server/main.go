@@ -6,14 +6,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
-	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/gkj-eben-haezer/gkj-eh-be/internal/config"
 	"github.com/gkj-eben-haezer/gkj-eh-be/internal/db"
 	"github.com/gkj-eben-haezer/gkj-eh-be/internal/handler"
-	appMiddleware "github.com/gkj-eben-haezer/gkj-eh-be/internal/middleware"
 	"github.com/gkj-eben-haezer/gkj-eh-be/internal/migrate"
 	"github.com/gkj-eben-haezer/gkj-eh-be/internal/store"
+	"github.com/go-chi/chi/v5"
+	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
 )
 
@@ -61,7 +60,6 @@ func main() {
 		r.Get("/content/public/slug/{slug}", contentH.GetPublicBySlug)
 
 		r.Group(func(r chi.Router) {
-			r.Use(appMiddleware.RequireAuth(cfg))
 			r.Get("/content", contentH.List)
 			r.Post("/content", contentH.Create)
 			r.Get("/content/{id}", contentH.GetByID)

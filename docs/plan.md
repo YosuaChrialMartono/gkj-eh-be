@@ -1,6 +1,7 @@
 # Plan: Go Backend (`gkj-eh-be`) + Frontend Wiring
 
 ## Context
+
 The frontend (`gkj-eh-web`) already has BFF routes that proxy to `process.env.API_URL`
 (`http://localhost:8080/api`), but the backend never existed. This plan creates a full
 Go REST API in a new sibling repo (`gkj-eh-be`), implements all endpoints consumed by the
@@ -10,6 +11,7 @@ frontend, and makes the minimal frontend changes to wire it up properly (dual JW
 ---
 
 ## Assumptions / Constraints
+
 - PostgreSQL database
 - Go already installed
 - New repo lives at `C:\Users\BMAX\projects\gkj-eh-be`
@@ -48,6 +50,8 @@ gkj-eh-be/
 │   ├── 001_create_users.sql
 │   ├── 002_create_content.sql
 │   └── 003_create_pelayan.sql
+├── docker-compose.yml           ← PostgreSQL container
+├── air.toml                     ← Live reload config
 ├── go.mod
 ├── .env.example
 └── Makefile
@@ -119,6 +123,102 @@ ALLOWED_ORIGINS=http://localhost:3000
 
 ---
 
+## Quick Start
+
+```bash
+# 1. Start database
+make db-up
+
+# 2. Copy and fill env
+cp .env.example .env
+
+# 3. Install air for live reload (one-time)
+make setup
+
+# 4. Run with live reload
+make dev
+
+# 5. Test
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test","email":"t@t.com","password":"secret"}'
+```
+
+### Makefile Commands
+
+| Command | Description |
+|---------|-------------|
+| `make run` | Run server without live reload |
+| `make dev` | Run with live reload (requires air) |
+| `make build` | Build binary to `bin/server` |
+| `make tidy` | Update Go dependencies |
+| `make db-up` | Start PostgreSQL container |
+| `make db-down` | Stop PostgreSQL container |
+| `make db-reset` | Reset database (removes volume) |
+| `make setup` | Install air tool |
+
+---
+
+## Image Storage Options
+
+### Pricing Comparison (IDR, 1 USD = ~17,000 IDR)
+
+| Provider | Free | 100GB/mo | 1TB/mo |
+|----------|------|----------|--------|
+| **AWS S3** | 5GB | ~₨75,000 | ~₨400,000 |
+| **Alibaba OSS** | 5GB | ~₨50,000 | ~₨294,000 |
+| **Cloudinary** | 25 credits | ₨1,500,000 | ₨4,200,000 |
+| **Google Drive** | 15GB | ~₨50,000 | ~₨170,000 |
+| **Dropbox** | 2GB | ~₨204,000 | ~₨204,000 |
+
+**Storage only (no bandwidth):**
+
+| Provider | Price/GB |
+|----------|----------|
+| **Alibaba OSS** | ~₨290/GB |
+| **AWS S3** | ~₨350/GB |
+| **Google Drive** | ~₨500/GB (100GB plan) |
+
+### Details
+
+#### Cloudinary
+- **Free tier:** 25 credits/month (OR 25GB storage OR 25GB bandwidth)
+- **Paid:** Starts at ₨1.5M/mo (Plus plan)
+- **Pros:** Easiest integration, built-in CDN, transformations, image optimization
+- **Cons:** Gets expensive quickly, credit-based system is confusing
+
+#### Alibaba OSS
+- **Free tier:** 5GB
+- **Pricing:** ~₨290/GB/month
+- **Pros:** Cheapest option, Indonesia region available (Jakarta)
+- **Cons:** More complex setup, no built-in CDN (need to add separately)
+
+#### AWS S3
+- **Free tier:** 5GB (12 months)
+- **Pricing:** ~₨350/GB/month
+- **Pros:** Most mature, works well with CloudFront CDN
+- **Cons:** More expensive than Alibaba
+
+### Recommendation
+
+For a church CMS with minimal images:
+
+1. **Start with Cloudinary free tier** — 25 credits is ~25GB, likely enough for years
+2. **Migrate to Alibaba OSS** if costs become an issue
+3. **Migration is simple** — just update URL strings in database (CMS stores URLs, not files)
+
+---
+
+## MVP Prototype Branch
+
+Branch: `mvp-prototype`
+
+Changes from main:
+- Auth middleware removed — all endpoints are public
+- Suitable for rapid prototyping without authentication
+
+---
+
 ## Frontend Changes (`gkj-eh-web`)
 
 Six files only:
@@ -129,23 +229,13 @@ Six files only:
 
 ---
 
-## Quick Start
+## Database Storage Estimate
 
-```bash
-# 1. Create database
-createdb gkj_eh
+| Content | Estimate |
+|---------|----------|
+| 500 articles @ 5KB each | ~2.5 MB |
+| Users table | < 1 MB |
+| Pelayan (service schedule) | < 1 MB |
+| **Total** | **~5 MB** |
 
-# 2. Copy and fill env
-cp .env.example .env
-
-# 3. Fetch deps
-go mod tidy
-
-# 4. Run (applies migrations automatically)
-make run
-
-# 5. Test
-curl -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Test","email":"t@t.com","password":"secret"}'
-```
+**Conclusion:** Text-based CMS, no file storage concerns. Even with 10+ years of content, you'll be under 100MB. PostgreSQL docker volume (default 20GB) will last practically forever.

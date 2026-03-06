@@ -24,7 +24,7 @@ func scanContent(row interface {
 }) (*model.Content, error) {
 	c := &model.Content{}
 	return c, row.Scan(
-		&c.ID, &c.Title, &c.Slug, &c.Type, &c.Status, &c.Body,
+		&c.ID, &c.Title, &c.Slug, &c.Type, &c.Status, &c.Body, &c.BodyHtml,
 		&c.AuthorID, &c.AuthorName,
 		&c.FeaturedImageURL, &c.PublishedAt,
 		&c.CreatedAt, &c.UpdatedAt,
@@ -129,7 +129,7 @@ func (s *ContentStore) List(ctx context.Context, p model.ContentListParams, publ
 
 func (s *ContentStore) GetByID(ctx context.Context, id string) (*model.Content, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT c.id, c.title, c.slug, c.type, c.status, c.body,
+		`SELECT c.id, c.title, c.slug, c.type, c.status, c.body, c.body_html,
 		        c.author_id, u.name, c.featured_image_url, c.published_at,
 		        c.created_at, c.updated_at
 		 FROM content c JOIN users u ON u.id = c.author_id WHERE c.id = $1`, id)
@@ -141,7 +141,7 @@ func (s *ContentStore) GetByID(ctx context.Context, id string) (*model.Content, 
 }
 
 func (s *ContentStore) GetBySlug(ctx context.Context, slug string, publicOnly bool) (*model.Content, error) {
-	q := `SELECT c.id, c.title, c.slug, c.type, c.status, c.body,
+	q := `SELECT c.id, c.title, c.slug, c.type, c.status, c.body, c.body_html,
 	             c.author_id, u.name, c.featured_image_url, c.published_at,
 	             c.created_at, c.updated_at
 	      FROM content c JOIN users u ON u.id = c.author_id WHERE c.slug = $1`
@@ -168,9 +168,9 @@ func (s *ContentStore) Create(ctx context.Context, in model.ContentCreateInput, 
 
 	var id string
 	err := s.db.QueryRowContext(ctx,
-		`INSERT INTO content (title, slug, type, status, body, author_id, featured_image_url, published_at)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-		in.Title, in.Slug, in.Type, in.Status, in.Body, authorID, in.FeaturedImageURL, publishedAt,
+		`INSERT INTO content (title, slug, type, status, body, body_html, author_id, featured_image_url, published_at)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+		in.Title, in.Slug, in.Type, in.Status, in.Body, in.BodyHtml, authorID, in.FeaturedImageURL, publishedAt,
 	).Scan(&id)
 	if err != nil {
 		return nil, err
@@ -189,10 +189,10 @@ func (s *ContentStore) Update(ctx context.Context, id string, in model.ContentUp
 	}
 
 	_, err := s.db.ExecContext(ctx,
-		`UPDATE content SET title=$1, slug=$2, type=$3, status=$4, body=$5,
-		 featured_image_url=$6, published_at=$7, updated_at=NOW()
-		 WHERE id=$8`,
-		in.Title, in.Slug, in.Type, in.Status, in.Body,
+		`UPDATE content SET title=$1, slug=$2, type=$3, status=$4, body=$5, body_html=$6,
+		 featured_image_url=$7, published_at=$8, updated_at=NOW()
+		 WHERE id=$9`,
+		in.Title, in.Slug, in.Type, in.Status, in.Body, in.BodyHtml,
 		in.FeaturedImageURL, publishedAt, id,
 	)
 	if err != nil {

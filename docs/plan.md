@@ -209,6 +209,280 @@ For a church CMS with minimal images:
 
 ---
 
+## Local Filesystem Storage (Recommended for VPS)
+
+Since the VPS has ~100GB storage, local filesystem is the simplest and cheapest option.
+
+### Implementation
+
+**Directory structure:**
+```
+gkj-eh-be/
+├── uploads/                    ← Create this folder
+│   └── images/
+│       └── {uuid}.jpg
+├── cmd/server/main.go
+└── ...
+```
+
+**Go handler (add to main.go):**
+```go
+// Serve uploaded files
+r.Handle("/uploads/*", http.StripPrefix("/uploads", http.FileServer(http.Dir("./uploads"))))
+```
+
+**Upload endpoint:**
+```go
+// POST /api/upload
+func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
+    file, header, err := r.FormFile("file")
+    defer file.Close()
+    
+    ext := filepath.Ext(header.Filename)
+    filename := uuid.New().String() + ext
+    path := "./uploads/" + filename
+    
+    out, _ := os.Create(path)
+    defer out.Close()
+    io.Copy(out, file)
+    
+    url := "/uploads/" + filename
+    respondJSON(w, http.StatusOK, map[string]string{"url": url})
+}
+```
+
+### Nginx Configuration (Production)
+
+```nginx
+location /uploads/ {
+    alias /var/www/gkj-eh/uploads/;
+    expires 30d;
+}
+```
+
+### Pros & Cons
+
+| Aspect | Local Filesystem | Cloud Storage |
+|--------|-----------------|---------------|
+| **Cost** | Free | ~₨50K+/mo |
+| **CDN** | No (add Nginx) | Yes |
+| **Setup** | Simple | Complex |
+| **Scaling** | Single server | Global |
+
+### Recommendation
+
+**Use local filesystem** — With 100GB VPS storage:
+- No additional costs
+- Simple implementation
+- For production with global users, add Nginx caching or CDN later if needed
+
+---
+
+## VPS Deployment Options
+
+### Overview
+
+| Option | Description | Pros | Cons |
+|--------|-------------|------|------|
+| **1. Binary + Systemd** | Run Go binary directly | Minimal resources, simple | Manual management |
+| **2. Docker Compose** | App in containers | Isolated, easy updates | More resources |
+| **3. Nginx + Docker** | Nginx on host → Docker containers | Best of both worlds | More config |
+
+---
+
+### Option 1: Binary + Systemd (Simplest)
+
+```bash
+# Build for Linux
+GOOS=linux GOARCH=amd64 go build -o bin/server ./cmd/server
+
+# Upload to VPS
+scp bin/server user@vps:/opt/gkj-eh/
+
+# Create systemd service
+sudo vim /etc/systemd/system/gkj-eh.service
+```
+
+```ini
+[Unit]
+Description=GKJ Backend
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/gkj-eh
+ExecStart=/opt/gkj-eh/server
+Restart=always
+EnvironmentFile=/opt/gkj-eh/.env
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl enable gkj-eh
+sudo systemctl start gkj-eh
+```
+
+---
+
+### Option 2: Docker Compose Only
+
+```yaml
+# docker-compose.yml
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./uploads:/app/uploads
+    env_file:
+      - .env
+    restart: always
+```
+
+---
+
+### Option 3: Nginx on Host + Docker (Recommended)
+
+**Architecture:**
+```
+User ──► Nginx (host) ──► Docker Container
+                        ├── Backend :8080
+                        └── Frontend :3000
+```
+
+**Docker Compose:**
+```yaml
+# docker-compose.yml
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./uploads:/app/uploads
+    env_file:
+      - .env
+    restart: always
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    restart: always
+```
+
+**Nginx Config:**
+```nginx
+# /etc/nginx/sites-available/gkj-eh
+server {
+    listen 80;
+    server_name gkj-eh.com www.gkj-eh.com;
+
+    # Frontend (Next.js)
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+    }
+
+    # Backend API
+    location /api/ {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # Static uploads
+    location /uploads/ {
+        alias /var/www/gkj-eh/uploads/;
+        expires 30d;
+    }
+}
+```
+
+---
+
+### Comparison
+
+| Aspect | Binary + Systemd | Docker Only | Nginx + Docker |
+|--------|------------------|-------------|----------------|
+| **Setup** | Medium | Easy | Medium |
+| **Resources** | Minimal | ~100MB+ overhead | ~100MB+ overhead |
+| **SSL/HTTPS** | Manual | Manual | Easy (certbot) |
+| **Static Files** | Via Go | Via volume | Nginx (fastest) |
+| **Updates** | Rebuild + scp | docker-compose up | docker-compose up |
+
+---
+
+### Recommendation
+
+**For this project: Option 3 (Nginx on Host + Docker)**
+
+- Clean separation: Nginx = routing, Docker = apps
+- Easy SSL with certbot
+- Frontend as static files (Next.js output)
+- Simple updates with docker-compose
+
+---
+
+## Full Stack Deployment (FE + BE)
+
+For deploying both frontend and backend together:
+
+### Combined Docker Compose
+
+```yaml
+# docker-compose.yml
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./uploads:/var/www/uploads:ro
+      - ./frontend/out:/var/www/public:ro
+    depends_on:
+      - backend
+    restart: always
+
+  backend:
+    build: ./backend
+    volumes:
+      - ./uploads:/app/uploads
+    env_file:
+      - .env
+    restart: always
+```
+
+### Build Process
+
+```bash
+# Frontend
+cd ../gkj-eh-web
+npm run build
+cp -r out ../gkj-eh-be/frontend/
+
+# Backend + Deploy
+cd ../gkj-eh-be
+docker-compose up -d --build
+```
+
+### Alternative: Nginx on Host (Simpler)
+
+- Nginx runs on host (not in Docker)
+- Docker containers for backend (:8080) and frontend (:3000)
+- See Option 3 above for nginx config
+
+---
+
 ## MVP Prototype Branch
 
 Branch: `mvp-prototype`

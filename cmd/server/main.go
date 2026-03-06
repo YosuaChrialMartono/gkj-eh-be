@@ -9,6 +9,7 @@ import (
 	"github.com/gkj-eben-haezer/gkj-eh-be/internal/config"
 	"github.com/gkj-eben-haezer/gkj-eh-be/internal/db"
 	"github.com/gkj-eben-haezer/gkj-eh-be/internal/handler"
+	"github.com/gkj-eben-haezer/gkj-eh-be/internal/middleware"
 	"github.com/gkj-eben-haezer/gkj-eh-be/internal/migrate"
 	"github.com/gkj-eben-haezer/gkj-eh-be/internal/store"
 	"github.com/go-chi/chi/v5"
@@ -60,6 +61,7 @@ func main() {
 		r.Get("/content/public/slug/{slug}", contentH.GetPublicBySlug)
 
 		r.Group(func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg))
 			r.Get("/content", contentH.List)
 			r.Post("/content", contentH.Create)
 			r.Get("/content/{id}", contentH.GetByID)

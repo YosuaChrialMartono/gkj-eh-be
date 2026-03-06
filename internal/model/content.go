@@ -9,6 +9,7 @@ type Content struct {
 	Type             string     `json:"type"`
 	Status           string     `json:"status"`
 	Body             string     `json:"body"`
+	BodyHtml         string     `json:"bodyHtml"`
 	AuthorID         string     `json:"authorId"`
 	AuthorName       string     `json:"authorName"`
 	FeaturedImageURL *string    `json:"featuredImageUrl"`
@@ -53,6 +54,7 @@ type ContentCreateInput struct {
 	Type             string  `json:"type"`
 	Status           string  `json:"status"`
 	Body             string  `json:"body"`
+	BodyHtml         string  `json:"bodyHtml"`
 	FeaturedImageURL *string `json:"featuredImageUrl"`
 	PublishedAt      *string `json:"publishedAt"` // ISO string, converted to time.Time in store
 }

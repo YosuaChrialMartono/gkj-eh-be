@@ -23,4 +23,4 @@ db-reset:
 	docker-compose up -d
 
 setup:
-	go install github.com/cosmtrek/air@latest
+	go install github.com/air-verse/air@latest

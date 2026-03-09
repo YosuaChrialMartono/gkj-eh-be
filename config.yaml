@@ -1,0 +1,16 @@
+database:
+  host: "localhost"
+  port: 5434
+  username: "postgres"
+  password: "password"
+  name: "gkj_eh"
+
+jwt:
+  secret: "your-super-secret-jwt-key-change-in-production"
+  accessTtl: "15m"
+  refreshTtl: "720h"
+
+server:
+  port: "8080"
+  allowedOrigins:
+    - "http://localhost:3000"

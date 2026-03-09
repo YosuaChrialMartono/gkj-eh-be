@@ -1,110 +1,98 @@
-# gkj-eh-be
+<p align="center">
+  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+</p>
 
-Go REST API backend for GKJ church content management system.
+[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
+[circleci-url]: https://circleci.com/gh/nestjs/nest
 
-## Tech Stack
+  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
+    <p align="center">
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
+<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
+<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
+<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
+<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
+  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
+    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
+  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+</p>
+  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
+  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-- **Go 1.23** with chi router
-- **PostgreSQL** with pgx driver
-- **JWT** authentication (access + refresh tokens)
-- **Docker** for local development
+## Description
 
-## Project Structure
+[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
-```
-cmd/server/main.go           # Entry point
-internal/
-├── config/config.go         # Environment variables
-├── db/db.go                 # PostgreSQL connection
-├── migrate/migrate.go       # Custom migration runner
-├── jwt/jwt.go               # Token signing/verification
-├── middleware/auth.go       # Route protection
-├── model/                   # Data structures
-│   ├── user.go
-│   ├── content.go
-│   └── pelayan.go
-├── store/                   # Database layer
-│   ├── user_store.go
-│   ├── content_store.go
-│   └── pelayan_store.go
-└── handler/                 # HTTP handlers
-    ├── respond.go
-    ├── auth_handler.go
-    ├── content_handler.go
-    └── pelayan_handler.go
-migrations/                  # SQL migrations
-```
-
-## API Routes
-
-### Auth (public)
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/auth/login` | Login with email/password |
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/google` | Login/register via Google |
-| POST | `/api/auth/refresh` | Refresh access token |
-| POST | `/api/auth/logout` | Logout |
-
-### Content
-| Method | Path | Auth |
-|--------|------|------|
-| GET | `/api/content/public` | none |
-| GET | `/api/content/public/slug/:slug` | none |
-| GET/POST | `/api/content` | JWT |
-| GET/PUT/DELETE | `/api/content/:id` | JWT |
-
-### Pelayan (service scheduling)
-All endpoints require JWT:
-- `/api/pelayan/roles` - CRUD for roles
-- `/api/pelayan/persons` - CRUD for persons
-- `/api/pelayan/services` - CRUD for services
-- `/api/pelayan/assignments` - Manage assignments
-
-## Quick Start
+## Project setup
 
 ```bash
-# Start database
-make db-up
-
-# Copy and fill env
-cp .env.example .env
-
-# Install air for live reload
-make setup
-
-# Run with live reload
-make dev
+$ npm install
 ```
 
-## Makefile Commands
+## Compile and run the project
 
-| Command | Description |
-|---------|-------------|
-| `make run` | Run server without live reload |
-| `make dev` | Run with live reload |
-| `make build` | Build binary to `bin/server` |
-| `make tidy` | Update dependencies |
-| `make db-up` | Start PostgreSQL container |
-| `make db-down` | Stop PostgreSQL container |
-| `make db-reset` | Reset database |
-| `make setup` | Install air |
+```bash
+# development
+$ npm run start
 
-## Environment Variables
+# watch mode
+$ npm run start:dev
 
-```
-DATABASE_URL=postgres://postgres:password@localhost:5432/gkj_eh?sslmode=disable
-JWT_SECRET=your-secret-key
-JWT_ACCESS_TTL=15m
-JWT_REFRESH_TTL=720h
-PORT=8080
-GOOGLE_CLIENT_ID=
-ALLOWED_ORIGINS=http://localhost:3000
+# production mode
+$ npm run start:prod
 ```
 
-## Token Strategy
+## Run tests
 
-| Token | TTL | Purpose |
-|-------|-----|---------|
-| access | 15 min | Bearer header on API calls |
-| refresh | 30 days | Sent to `/api/auth/refresh` |
+```bash
+# unit tests
+$ npm run test
+
+# e2e tests
+$ npm run test:e2e
+
+# test coverage
+$ npm run test:cov
+```
+
+## Deployment
+
+When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+
+If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+
+```bash
+$ npm install -g @nestjs/mau
+$ mau deploy
+```
+
+With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+
+## Resources
+
+Check out a few resources that may come in handy when working with NestJS:
+
+- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
+- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
+- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
+- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
+- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
+- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
+- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
+- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+
+## Support
+
+Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+
+## Stay in touch
+
+- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
+- Website - [https://nestjs.com](https://nestjs.com/)
+- Twitter - [@nestframework](https://twitter.com/nestframework)
+
+## License
+
+Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).

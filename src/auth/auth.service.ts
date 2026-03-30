@@ -2,11 +2,11 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { UsersService } from '../users/users.service';
-import { RegisterDto, LoginDto } from './dto/auth.dto';
-import { getConfig } from '../config/configuration';
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { UsersService } from "../users/users.service";
+import { RegisterDto, LoginDto } from "./dto/auth.dto";
+import { getConfig } from "../config/configuration";
 
 interface TokenPayload {
   sub: string;
@@ -42,12 +42,15 @@ export class AuthService {
   async login(dto: LoginDto) {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
-    const isValid = await this.usersService.validatePassword(user, dto.password);
+    const isValid = await this.usersService.validatePassword(
+      user,
+      dto.password,
+    );
     if (!isValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     const tokens = await this.generateTokens(user.id, user.email);
@@ -77,10 +80,10 @@ export class AuthService {
   }
 
   private parseTtl(ttl: string): number {
-    if (ttl.includes('m')) {
+    if (ttl.includes("m")) {
       return parseInt(ttl) * 60;
     }
-    if (ttl.includes('h')) {
+    if (ttl.includes("h")) {
       return parseInt(ttl) * 3600;
     }
     return parseInt(ttl);

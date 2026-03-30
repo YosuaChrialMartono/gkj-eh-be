@@ -1,20 +1,16 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
 
-@Entity('pelayan_services')
+@Entity("pelayan_services")
 export class PelayanServiceEntity {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({ type: 'date' })
+  @Column({ type: "date" })
   date: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   label: string;
 
-  @Column({ name: 'is_extra', type: 'boolean', default: false })
+  @Column({ name: "is_extra", type: "boolean", default: false })
   isExtra: boolean;
 }

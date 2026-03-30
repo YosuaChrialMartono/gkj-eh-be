@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { PelayanRole } from './entities/pelayan-role.entity';
-import { PelayanPerson } from './entities/pelayan-person.entity';
-import { PelayanServiceEntity } from './entities/pelayan-service.entity';
-import { PelayanAssignment } from './entities/pelayan-assignment.entity';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { PelayanRole } from "./entities/pelayan-role.entity";
+import { PelayanPerson } from "./entities/pelayan-person.entity";
+import { PelayanServiceEntity } from "./entities/pelayan-service.entity";
+import { PelayanAssignment } from "./entities/pelayan-assignment.entity";
 import {
   CreatePelayanRoleDto,
   UpdatePelayanRoleDto,
@@ -12,7 +12,7 @@ import {
   CreatePelayanServiceDto,
   UpdatePelayanServiceDto,
   UpsertPelayanAssignmentDto,
-} from './dto/pelayan.dto';
+} from "./dto/pelayan.dto";
 
 @Injectable()
 export class PelayanService {
@@ -28,7 +28,7 @@ export class PelayanService {
   ) {}
 
   async findAllRoles(): Promise<PelayanRole[]> {
-    return this.roleRepository.find({ order: { order: 'ASC' } });
+    return this.roleRepository.find({ order: { order: "ASC" } });
   }
 
   async createRole(dto: CreatePelayanRoleDto): Promise<PelayanRole> {
@@ -39,10 +39,13 @@ export class PelayanService {
     return this.roleRepository.save(role);
   }
 
-  async updateRole(id: string, dto: UpdatePelayanRoleDto): Promise<PelayanRole> {
+  async updateRole(
+    id: string,
+    dto: UpdatePelayanRoleDto,
+  ): Promise<PelayanRole> {
     const role = await this.roleRepository.findOne({ where: { id } });
     if (!role) {
-      throw new NotFoundException('Role not found');
+      throw new NotFoundException("Role not found");
     }
     Object.assign(role, dto);
     return this.roleRepository.save(role);
@@ -51,7 +54,7 @@ export class PelayanService {
   async deleteRole(id: string): Promise<void> {
     const role = await this.roleRepository.findOne({ where: { id } });
     if (!role) {
-      throw new NotFoundException('Role not found');
+      throw new NotFoundException("Role not found");
     }
     await this.roleRepository.remove(role);
   }
@@ -68,16 +71,18 @@ export class PelayanService {
   async deletePerson(id: string): Promise<void> {
     const person = await this.personRepository.findOne({ where: { id } });
     if (!person) {
-      throw new NotFoundException('Person not found');
+      throw new NotFoundException("Person not found");
     }
     await this.personRepository.remove(person);
   }
 
   async findAllServices(): Promise<PelayanServiceEntity[]> {
-    return this.serviceRepository.find({ order: { date: 'ASC' } });
+    return this.serviceRepository.find({ order: { date: "ASC" } });
   }
 
-  async createService(dto: CreatePelayanServiceDto): Promise<PelayanServiceEntity> {
+  async createService(
+    dto: CreatePelayanServiceDto,
+  ): Promise<PelayanServiceEntity> {
     const service = this.serviceRepository.create({
       date: dto.date,
       label: dto.label,
@@ -86,10 +91,13 @@ export class PelayanService {
     return this.serviceRepository.save(service);
   }
 
-  async updateService(id: string, dto: UpdatePelayanServiceDto): Promise<PelayanServiceEntity> {
+  async updateService(
+    id: string,
+    dto: UpdatePelayanServiceDto,
+  ): Promise<PelayanServiceEntity> {
     const service = await this.serviceRepository.findOne({ where: { id } });
     if (!service) {
-      throw new NotFoundException('Service not found');
+      throw new NotFoundException("Service not found");
     }
     Object.assign(service, dto);
     return this.serviceRepository.save(service);
@@ -98,18 +106,20 @@ export class PelayanService {
   async deleteService(id: string): Promise<void> {
     const service = await this.serviceRepository.findOne({ where: { id } });
     if (!service) {
-      throw new NotFoundException('Service not found');
+      throw new NotFoundException("Service not found");
     }
     await this.serviceRepository.remove(service);
   }
 
   async findAllAssignments(): Promise<PelayanAssignment[]> {
     return this.assignmentRepository.find({
-      relations: ['service', 'role'],
+      relations: ["service", "role"],
     });
   }
 
-  async upsertAssignment(dto: UpsertPelayanAssignmentDto): Promise<PelayanAssignment> {
+  async upsertAssignment(
+    dto: UpsertPelayanAssignmentDto,
+  ): Promise<PelayanAssignment> {
     let assignment = await this.assignmentRepository.findOne({
       where: { serviceId: dto.serviceId, roleId: dto.roleId },
     });
@@ -124,9 +134,11 @@ export class PelayanService {
   }
 
   async deleteAssignment(id: string): Promise<void> {
-    const assignment = await this.assignmentRepository.findOne({ where: { id } });
+    const assignment = await this.assignmentRepository.findOne({
+      where: { id },
+    });
     if (!assignment) {
-      throw new NotFoundException('Assignment not found');
+      throw new NotFoundException("Assignment not found");
     }
     await this.assignmentRepository.remove(assignment);
   }

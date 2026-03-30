@@ -10,22 +10,26 @@ import {
   UseGuards,
   Request,
   ParseUUIDPipe,
-} from '@nestjs/common';
-import { ContentService, PaginatedResult } from './content.service';
-import { CreateContentDto, UpdateContentDto, ContentQueryDto } from './dto/content.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+} from "@nestjs/common";
+import { ContentService, PaginatedResult } from "./content.service";
+import {
+  CreateContentDto,
+  UpdateContentDto,
+  ContentQueryDto,
+} from "./dto/content.dto";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 
-@Controller('content')
+@Controller("content")
 export class ContentController {
   constructor(private readonly contentService: ContentService) {}
 
-  @Get('public')
+  @Get("public")
   findPublic(@Query() query: ContentQueryDto) {
     return this.contentService.findPublic(query);
   }
 
-  @Get('public/slug/:slug')
-  findPublicBySlug(@Param('slug') slug: string) {
+  @Get("public/slug/:slug")
+  findPublicBySlug(@Param("slug") slug: string) {
     return this.contentService.findBySlug(slug);
   }
 
@@ -36,8 +40,8 @@ export class ContentController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
+  @Get(":id")
+  findOne(@Param("id", ParseUUIDPipe) id: string) {
     return this.contentService.findById(id);
   }
 
@@ -48,17 +52,17 @@ export class ContentController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Put(':id')
+  @Put(":id")
   update(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateContentDto,
   ) {
     return this.contentService.update(id, dto);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Delete(':id')
-  remove(@Param('id', ParseUUIDPipe) id: string) {
+  @Delete(":id")
+  remove(@Param("id", ParseUUIDPipe) id: string) {
     return this.contentService.delete(id);
   }
 }

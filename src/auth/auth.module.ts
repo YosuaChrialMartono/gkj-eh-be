@@ -1,11 +1,11 @@
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { JwtStrategy } from './strategies/jwt.strategy';
-import { UsersModule } from '../users/users.module';
-import { getConfig } from '../config/configuration';
+import { Module } from "@nestjs/common";
+import { JwtModule } from "@nestjs/jwt";
+import { PassportModule } from "@nestjs/passport";
+import { AuthService } from "./auth.service";
+import { AuthController } from "./auth.controller";
+import { JwtStrategy } from "./strategies/jwt.strategy";
+import { UsersModule } from "../users/users.module";
+import { getConfig } from "../config/configuration";
 
 @Module({
   imports: [
@@ -15,10 +15,10 @@ import { getConfig } from '../config/configuration';
       useFactory: () => {
         const config = getConfig();
         const ttl = config.jwt.accessTtl;
-        const seconds = ttl.includes('m') 
-          ? parseInt(ttl) * 60 
-          : ttl.includes('h') 
-            ? parseInt(ttl) * 3600 
+        const seconds = ttl.includes("m")
+          ? parseInt(ttl) * 60
+          : ttl.includes("h")
+            ? parseInt(ttl) * 3600
             : parseInt(ttl);
         return {
           secret: config.jwt.secret,

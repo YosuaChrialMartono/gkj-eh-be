@@ -1,9 +1,13 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
-import { User } from './entities/user.entity';
-import { RegisterDto } from '../auth/dto/auth.dto';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import * as bcrypt from "bcrypt";
+import { User } from "./entities/user.entity";
+import { RegisterDto } from "../auth/dto/auth.dto";
 
 @Injectable()
 export class UsersService {
@@ -23,20 +27,24 @@ export class UsersService {
   async create(data: RegisterDto & { passwordHash: string }): Promise<User> {
     const existing = await this.findByEmail(data.email);
     if (existing) {
-      throw new ConflictException('Email already exists');
+      throw new ConflictException("Email already exists");
     }
 
     const user = this.usersRepository.create({
       name: data.name,
       email: data.email,
       password: data.passwordHash,
-      role: 'viewer',
+      role: "viewer",
     });
 
     return this.usersRepository.save(user);
   }
 
-  async createGoogleUser(profile: { name: string; email: string; avatar?: string }): Promise<User> {
+  async createGoogleUser(profile: {
+    name: string;
+    email: string;
+    avatar?: string;
+  }): Promise<User> {
     const existing = await this.findByEmail(profile.email);
     if (existing) {
       return existing;
@@ -47,7 +55,7 @@ export class UsersService {
       email: profile.email,
       avatar: profile.avatar,
       password: null,
-      role: 'viewer',
+      role: "viewer",
     });
 
     return this.usersRepository.save(user);

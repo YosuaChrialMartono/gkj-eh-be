@@ -1,6 +1,6 @@
-import { readFileSync } from 'fs';
-import { join } from 'path';
-import * as yaml from 'js-yaml';
+import { readFileSync } from "fs";
+import { join } from "path";
+import * as yaml from "js-yaml";
 
 interface Config {
   database: {
@@ -28,8 +28,8 @@ export function loadConfig(): Config {
     return config;
   }
 
-  const configPath = join(process.cwd(), 'config.yaml');
-  const fileContents = readFileSync(configPath, 'utf8');
+  const configPath = join(process.cwd(), "config.yaml");
+  const fileContents = readFileSync(configPath, "utf8");
   config = yaml.load(fileContents) as Config;
   return config;
 }

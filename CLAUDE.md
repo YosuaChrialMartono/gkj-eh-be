@@ -22,10 +22,11 @@ NestJS REST API backend for GKJ Eben-Haezer church content + service-scheduling 
 - Protected routes use `JwtAuthGuard` (`src/auth/guards/jwt-auth.guard.ts`). Public routes either live outside it or are explicitly exposed (`/auth/*`, `/content/public/*`).
 - DTOs use `class-validator` decorators. Global `ValidationPipe` strips unknown fields (`whitelist: true`) and coerces types (`transform: true`).
 - Entities use TypeORM decorators. Schema is auto-synced from entities in dev — when you change an entity, restart picks it up. For prod, write proper migrations (not set up yet).
-- No `/api/auth/google` endpoint (was in the Go MVP; not in NestJS).
+- No global `/api` prefix is configured in `main.ts`. Routes are served at the controller path directly (`/auth/login`, `/content`, …). Frontend (`gkj-eh-web`) uses `API_URL=http://localhost:8080` and proxies to these paths verbatim. Don't add `setGlobalPrefix('api')` without also updating the frontend proxy paths.
+- No `/auth/google` endpoint (was in the Go MVP; not in NestJS). Frontend still calls it — known gap.
 
 ## Routes
-See `README.md` for the full table. Public: `/api/auth/*`, `/api/content/public/*`. Everything else requires JWT.
+See `README.md` for the full table. Public: `/auth/*`, `/content/public/*`. Everything else requires JWT.
 
 ## Config (`config.yaml`)
 Keys: `database.{host,port,username,password,name}`, `jwt.{secret,accessTtl,refreshTtl}`, `server.{port,allowedOrigins[]}`. `config.yaml` is checked in but should be replaced with secrets-from-env (or `.env`) before production.

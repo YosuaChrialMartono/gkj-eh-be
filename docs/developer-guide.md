@@ -3,11 +3,13 @@
 ## How Auth Works
 
 ### Flow
-1. `POST /api/auth/login` or `/register` → returns `{ user, accessToken, refreshToken }`
+1. `POST /auth/login` or `/register` → returns `{ user, accessToken, refreshToken }`
 2. Client stores tokens (access in memory, refresh in httpOnly cookie via BFF)
 3. Protected requests send `Authorization: Bearer <accessToken>`
 4. `JwtAuthGuard` (`src/auth/guards/jwt-auth.guard.ts`) → `JwtStrategy` (`src/auth/strategies/jwt.strategy.ts`) verifies the token and attaches the user to `request.user`
-5. `POST /api/auth/refresh` (with `JwtAuthGuard`) exchanges a valid token for a fresh pair
+5. `POST /auth/refresh` (with `JwtAuthGuard`) exchanges a valid token for a fresh pair
+
+> Note: no global `/api` prefix; routes are served directly. Frontend (`gkj-eh-web`) sets `API_URL=http://localhost:8080` and hits `/auth/...`, `/content/...` verbatim.
 
 ### Token Types
 Signed in `src/auth/auth.service.ts` (`generateTokens`):
@@ -156,7 +158,7 @@ import {
   UpdateAnnouncementDto,
 } from "./dto/announcement.dto";
 
-@Controller("api/announcements")
+@Controller("announcements")
 @UseGuards(JwtAuthGuard)
 export class AnnouncementsController {
   constructor(private svc: AnnouncementsService) {}
@@ -207,14 +209,14 @@ Restart `npm run start:dev`; `synchronize: true` creates the table on boot.
 
 ### What the Frontend Does
 
-1. **Login/Register** → `POST /api/auth/login` or `/register`
+1. **Login/Register** → `POST /auth/login` or `/auth/register`
 2. **Store tokens**:
    - `accessToken` in memory (or component state)
    - `refreshToken` in an httpOnly cookie via the Next.js BFF
 3. **Protected requests** send `Authorization: Bearer <accessToken>`
 4. **Token refresh** on 401:
    ```http
-   POST /api/auth/refresh
+   POST /auth/refresh
    Authorization: Bearer <still-valid-refresh-or-access-token>
    ```
    Note: `auth.controller.ts` currently guards `/refresh` with `JwtAuthGuard`, so the client must send a valid (non-expired) token. Real refresh-token rotation is not implemented yet.
@@ -223,11 +225,11 @@ Restart `npm run start:dev`; `synchronize: true` creates the table on boot.
 
 | Route | Auth |
 |-------|------|
-| `/api/auth/*` | public |
-| `/api/content/public*` | public |
-| `/api/content/*` (other) | JWT |
-| `/api/pelayan/*` | JWT |
-| `/api/users/me` | JWT |
+| `/auth/*` | public |
+| `/content/public*` | public |
+| `/content/*` (other) | JWT |
+| `/pelayan/*` | JWT |
+| `/users/me` | JWT |
 
 ### BFF Pattern (Next.js frontend)
 - `app/api/auth/login/route.ts` proxies to this backend, sets the refresh cookie, returns the access token to the browser.

@@ -56,10 +56,10 @@ migrations/                  # SQL migrations
 
 ### Pelayan (service scheduling)
 All endpoints require JWT:
-- `/api/pelayan/roles` - CRUD for roles
-- `/api/pelayan/persons` - CRUD for persons
-- `/api/pelayan/services` - CRUD for services
-- `/api/pelayan/assignments` - Manage assignments
+- `/api/pelayan/roles` — List / Create / Update / Delete
+- `/api/pelayan/persons` — List / Create / Delete
+- `/api/pelayan/services` — List / Create / Update / Delete
+- `/api/pelayan/assignments` — List / Upsert / Delete
 
 ## Quick Start
 
@@ -108,3 +108,8 @@ ALLOWED_ORIGINS=http://localhost:3000
 |-------|-----|---------|
 | access | 15 min | Bearer header on API calls |
 | refresh | 30 days | Sent to `/api/auth/refresh` |
+
+## More
+
+- Architecture notes for Claude / new contributors: [`CLAUDE.md`](./CLAUDE.md)
+- Auth flow + how to add a new CRUD: [`docs/developer-guide.md`](./docs/developer-guide.md)

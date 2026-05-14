@@ -2,10 +2,12 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  InternalServerErrorException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { OAuth2Client } from "google-auth-library";
 import { UsersService } from "../users/users.service";
-import { RegisterDto, LoginDto } from "./dto/auth.dto";
+import { RegisterDto, LoginDto, GoogleAuthDto } from "./dto/auth.dto";
 import { getConfig } from "../config/configuration";
 
 interface TokenPayload {
@@ -52,6 +54,48 @@ export class AuthService {
     if (!isValid) {
       throw new UnauthorizedException("Invalid credentials");
     }
+
+    const tokens = await this.generateTokens(user.id, user.email);
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      ...tokens,
+    };
+  }
+
+  async googleAuth(dto: GoogleAuthDto) {
+    const clientId = getConfig().google?.clientId;
+    if (!clientId) {
+      throw new InternalServerErrorException(
+        "Google sign-in not configured (google.clientId missing)",
+      );
+    }
+
+    const client = new OAuth2Client(clientId);
+    let payload;
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: dto.credential,
+        audience: clientId,
+      });
+      payload = ticket.getPayload();
+    } catch {
+      throw new UnauthorizedException("Invalid Google credential");
+    }
+
+    if (!payload?.email || !payload.email_verified) {
+      throw new UnauthorizedException("Google account email not verified");
+    }
+
+    const user = await this.usersService.createGoogleUser({
+      email: payload.email,
+      name: payload.name ?? payload.email,
+      avatar: payload.picture,
+    });
 
     const tokens = await this.generateTokens(user.id, user.email);
     return {

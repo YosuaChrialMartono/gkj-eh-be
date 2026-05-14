@@ -23,7 +23,7 @@ NestJS REST API backend for GKJ Eben-Haezer church content + service-scheduling 
 - DTOs use `class-validator` decorators. Global `ValidationPipe` strips unknown fields (`whitelist: true`) and coerces types (`transform: true`).
 - Entities use TypeORM decorators. Schema is auto-synced from entities in dev — when you change an entity, restart picks it up. For prod, write proper migrations (not set up yet).
 - No global `/api` prefix is configured in `main.ts`. Routes are served at the controller path directly (`/auth/login`, `/content`, …). Frontend (`gkj-eh-web`) uses `API_URL=http://localhost:8080` and proxies to these paths verbatim. Don't add `setGlobalPrefix('api')` without also updating the frontend proxy paths.
-- No `/auth/google` endpoint (was in the Go MVP; not in NestJS). Frontend still calls it — known gap.
+- `/auth/google` accepts `{ credential }` (Google ID token), verifies via `google-auth-library` using `google.clientId` from `config.yaml`, upserts user via `createGoogleUser`, returns the same `{ user, accessToken, refreshToken }` shape as `/login`. Requires `google.clientId` set.
 
 ## Routes
 See `README.md` for the full table. Public: `/auth/*`, `/content/public/*`. Everything else requires JWT.

@@ -20,3 +20,9 @@ export class LoginDto {
   @IsString()
   password: string;
 }
+
+export class GoogleAuthDto {
+  @IsString()
+  @MinLength(1)
+  credential: string;
+}

@@ -39,6 +39,7 @@ config.yaml                      # Local config (DB, JWT, CORS, port)
 |--------|------|-------------|
 | POST | `/register` | Register new user |
 | POST | `/login` | Login with email/password |
+| POST | `/google` | Login/register via Google ID token (`{ credential }`) |
 | POST | `/refresh` | Refresh tokens (JWT-guarded) |
 | POST | `/logout` | Logout |
 
@@ -61,8 +62,8 @@ config.yaml                      # Local config (DB, JWT, CORS, port)
 - `/services` — List / Create / Update / Delete
 - `/assignments` — List / Upsert / Delete
 
-### Known gaps vs. frontend
-- Frontend `lib/api/auth.ts` calls `POST /auth/google`; backend does not expose it (Go MVP had it; not ported). Google login currently 404s.
+### Google sign-in
+`POST /auth/google` accepts `{ credential: "<google-id-token>" }`, verifies it against `google.clientId` from `config.yaml`, and upserts the user (`createGoogleUser` in `users.service.ts`). The same access + refresh token pair as `/login` is returned. Set `google.clientId` in `config.yaml` to enable.
 
 ## Quick Start
 

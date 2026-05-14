@@ -32,20 +32,22 @@ config.yaml                      # Local config (DB, JWT, CORS, port)
 
 ## API Routes
 
-### Auth (public) — `/api/auth`
+> No global `/api` prefix is set; routes are served at the controller path directly. Frontend uses `API_URL=http://localhost:8080`.
+
+### Auth (public) — `/auth`
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/register` | Register new user |
 | POST | `/login` | Login with email/password |
-| POST | `/refresh` | Refresh access token |
+| POST | `/refresh` | Refresh tokens (JWT-guarded) |
 | POST | `/logout` | Logout |
 
-### Users — `/api/users`
+### Users — `/users`
 | Method | Path | Auth |
 |--------|------|------|
 | GET | `/me` | JWT |
 
-### Content — `/api/content`
+### Content — `/content`
 | Method | Path | Auth |
 |--------|------|------|
 | GET | `/public` | none |
@@ -53,11 +55,14 @@ config.yaml                      # Local config (DB, JWT, CORS, port)
 | GET/POST | `/` | JWT |
 | GET/PUT/DELETE | `/:id` | JWT |
 
-### Pelayan — `/api/pelayan` (all JWT)
+### Pelayan — `/pelayan` (all JWT)
 - `/roles` — List / Create / Update / Delete
 - `/persons` — List / Create / Delete
 - `/services` — List / Create / Update / Delete
 - `/assignments` — List / Upsert / Delete
+
+### Known gaps vs. frontend
+- Frontend `lib/api/auth.ts` calls `POST /auth/google`; backend does not expose it (Go MVP had it; not ported). Google login currently 404s.
 
 ## Quick Start
 
@@ -115,7 +120,7 @@ server:
 | Token | TTL | Purpose |
 |-------|-----|---------|
 | access | 15 min | `Authorization: Bearer <token>` on API calls |
-| refresh | 30 days | POST `/api/auth/refresh` |
+| refresh | 30 days | POST `/auth/refresh` |
 
 ## More
 

@@ -1,44 +1,46 @@
 # CLAUDE.md
 
-Go REST API backend for GKJ Eben-Haezer church content + service-scheduling system.
+NestJS REST API backend for GKJ Eben-Haezer church content + service-scheduling system.
 
 ## Stack
-- Go 1.23, chi router, pgx/PostgreSQL, JWT (access + refresh), godotenv
-- Local dev: `docker-compose` for Postgres, `air` for live reload
+- NestJS 11 (TypeScript), Express adapter
+- TypeORM + Postgres (`synchronize: true` in dev — no separate migrations yet)
+- `@nestjs/jwt` + `passport-jwt` for auth (access + refresh)
+- bcrypt for passwords
+- `config.yaml` (loaded via `js-yaml`) for local config — NOT `.env` despite an old `.env.example` lingering
 
 ## Layout
-- `cmd/server/main.go` — entry, wires config → db → migrate → stores → handlers → router
-- `internal/config` — env loader
-- `internal/db` — pgx pool connect
-- `internal/migrate` — custom idempotent SQL migration runner (auto-runs on start)
-- `internal/jwt` — sign/verify access + refresh tokens
-- `internal/middleware/auth.go` — `RequireAuth` middleware, puts claims on request context
-- `internal/model` — plain structs (`user`, `content`, `pelayan`)
-- `internal/store` — DB layer per resource
-- `internal/handler` — HTTP handlers per resource; `respond.go` shared JSON helpers
-- `migrations/NNN_*.sql` — applied in lexical order
+- `src/main.ts` — bootstrap, CORS, global `ValidationPipe`
+- `src/app.module.ts` — root module, `TypeOrmModule.forRootAsync` reads `config.yaml`
+- `src/config/configuration.ts` — `getConfig()` returns typed config
+- Feature modules per resource: `auth/`, `users/`, `content/`, `pelayan/`
+- Each feature folder: `*.controller.ts`, `*.service.ts`, `*.module.ts`, `dto/`, `entities/`
+- `test/` — Jest e2e
 
 ## Conventions
-- Three-layer: handler → store → db. No business logic in stores; no SQL in handlers.
-- Every request mutating data goes through `middleware.RequireAuth` except `/api/auth/*` and `/api/content/public/*`.
-- Migrations are append-only and idempotent (`CREATE TABLE IF NOT EXISTS …`). Never edit a shipped migration; add a new file.
-- New CRUD follows the pattern documented in `docs/developer-guide.md` (migration → model → store → handler → route).
+- Layer: controller → service → TypeORM repository. No DB calls in controllers; no HTTP in services.
+- Protected routes use `JwtAuthGuard` (`src/auth/guards/jwt-auth.guard.ts`). Public routes either live outside it or are explicitly exposed (`/auth/*`, `/content/public/*`).
+- DTOs use `class-validator` decorators. Global `ValidationPipe` strips unknown fields (`whitelist: true`) and coerces types (`transform: true`).
+- Entities use TypeORM decorators. Schema is auto-synced from entities in dev — when you change an entity, restart picks it up. For prod, write proper migrations (not set up yet).
+- No `/api/auth/google` endpoint (was in the Go MVP; not in NestJS).
 
 ## Routes
-See `README.md` for the full table. Public: auth + `/api/content/public/*`. Everything else needs JWT.
+See `README.md` for the full table. Public: `/api/auth/*`, `/api/content/public/*`. Everything else requires JWT.
 
-## Env
-Copy `.env.example` → `.env`. Required: `DATABASE_URL`, `JWT_SECRET`. Optional: `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `PORT`, `GOOGLE_CLIENT_ID`, `ALLOWED_ORIGINS`.
+## Config (`config.yaml`)
+Keys: `database.{host,port,username,password,name}`, `jwt.{secret,accessTtl,refreshTtl}`, `server.{port,allowedOrigins[]}`. `config.yaml` is checked in but should be replaced with secrets-from-env (or `.env`) before production.
 
 ## Common commands
-- `make db-up` — start Postgres
-- `make dev` — air live reload (run `make setup` once to install air)
-- `make run` — plain `go run`
-- `make build` — binary to `bin/server`
-- `make db-reset` — wipe + restart Postgres volume
+- `npm install`
+- `docker compose up -d` — Postgres on `localhost:5434`
+- `npm run start:dev` — watch mode
+- `npm run build` / `npm run start:prod`
+- `npm run lint` / `npm run format`
+- `npm run test` / `npm run test:e2e`
 
 ## Notes for Claude
-- This is NOT a Node project. No `package.json`, no `.nvmrc`. Go toolchain only.
-- Build artifacts go in `tmp/` and are gitignored — don't commit them.
-- Migrations run automatically on server start; don't write a separate CLI for them.
-- When adding endpoints, register them inside the existing `r.Route("/api", …)` group in `cmd/server/main.go` and decide public vs protected explicitly.
+- This is a Node/NestJS project (was Go until commit `91c50f6`). Don't reach for Go tooling.
+- `synchronize: true` is dev-only. If asked to add a migration, switch to `synchronize: false` and use TypeORM CLI migrations.
+- `config.yaml` ships with placeholder secrets — flag if you see them being used in any deploy/prod context.
+- When adding endpoints: create or extend the feature module, register controller + service in the module, ensure the module is imported in `app.module.ts`. Protect with `@UseGuards(JwtAuthGuard)` unless explicitly public.
+- Stray Go-era leftovers may still exist in `docs/` and `.env.example` — verify before trusting them.

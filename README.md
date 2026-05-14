@@ -1,115 +1,123 @@
 # gkj-eh-be
 
-Go REST API backend for GKJ church content management system.
+NestJS REST API backend for GKJ Eben-Haezer church content + service-scheduling system.
 
 ## Tech Stack
 
-- **Go 1.23** with chi router
-- **PostgreSQL** with pgx driver
-- **JWT** authentication (access + refresh tokens)
-- **Docker** for local development
+- **NestJS 11** (TypeScript) with `@nestjs/platform-express`
+- **PostgreSQL** via TypeORM (`synchronize: true` in dev)
+- **JWT** auth (access + refresh) using `@nestjs/jwt` + `passport-jwt`
+- **bcrypt** for password hashing
+- **Docker** for local Postgres
 
 ## Project Structure
 
 ```
-cmd/server/main.go           # Entry point
-internal/
-├── config/config.go         # Environment variables
-├── db/db.go                 # PostgreSQL connection
-├── migrate/migrate.go       # Custom migration runner
-├── jwt/jwt.go               # Token signing/verification
-├── middleware/auth.go       # Route protection
-├── model/                   # Data structures
-│   ├── user.go
-│   ├── content.go
-│   └── pelayan.go
-├── store/                   # Database layer
-│   ├── user_store.go
-│   ├── content_store.go
-│   └── pelayan_store.go
-└── handler/                 # HTTP handlers
-    ├── respond.go
-    ├── auth_handler.go
-    ├── content_handler.go
-    └── pelayan_handler.go
-migrations/                  # SQL migrations
+src/
+├── main.ts                      # Bootstrap, CORS, global validation pipe
+├── app.module.ts                # Root module, TypeORM setup
+├── config/configuration.ts      # Loads config.yaml
+├── auth/
+│   ├── auth.controller.ts       # register/login/refresh/logout
+│   ├── auth.service.ts
+│   ├── strategies/jwt.strategy.ts
+│   ├── guards/jwt-auth.guard.ts
+│   └── dto/auth.dto.ts
+├── users/                       # User entity + /users/me
+├── content/                     # Content CRUD (+ public read)
+└── pelayan/                     # Roles / Persons / Services / Assignments
+test/                            # Jest e2e
+config.yaml                      # Local config (DB, JWT, CORS, port)
 ```
 
 ## API Routes
 
-### Auth (public)
+### Auth (public) — `/api/auth`
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/auth/login` | Login with email/password |
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/google` | Login/register via Google |
-| POST | `/api/auth/refresh` | Refresh access token |
-| POST | `/api/auth/logout` | Logout |
+| POST | `/register` | Register new user |
+| POST | `/login` | Login with email/password |
+| POST | `/refresh` | Refresh access token |
+| POST | `/logout` | Logout |
 
-### Content
+### Users — `/api/users`
 | Method | Path | Auth |
 |--------|------|------|
-| GET | `/api/content/public` | none |
-| GET | `/api/content/public/slug/:slug` | none |
-| GET/POST | `/api/content` | JWT |
-| GET/PUT/DELETE | `/api/content/:id` | JWT |
+| GET | `/me` | JWT |
 
-### Pelayan (service scheduling)
-All endpoints require JWT:
-- `/api/pelayan/roles` — List / Create / Update / Delete
-- `/api/pelayan/persons` — List / Create / Delete
-- `/api/pelayan/services` — List / Create / Update / Delete
-- `/api/pelayan/assignments` — List / Upsert / Delete
+### Content — `/api/content`
+| Method | Path | Auth |
+|--------|------|------|
+| GET | `/public` | none |
+| GET | `/public/slug/:slug` | none |
+| GET/POST | `/` | JWT |
+| GET/PUT/DELETE | `/:id` | JWT |
+
+### Pelayan — `/api/pelayan` (all JWT)
+- `/roles` — List / Create / Update / Delete
+- `/persons` — List / Create / Delete
+- `/services` — List / Create / Update / Delete
+- `/assignments` — List / Upsert / Delete
 
 ## Quick Start
 
 ```bash
-# Start database
-make db-up
+# 1. Install deps
+npm install
 
-# Copy and fill env
-cp .env.example .env
+# 2. Start Postgres (exposes 5434 → matches config.yaml)
+docker compose up -d
 
-# Install air for live reload
-make setup
+# 3. Edit config.yaml — set jwt.secret to a real value
+#    (32-byte random hex: `openssl rand -hex 32`)
 
-# Run with live reload
-make dev
+# 4. Run with live reload
+npm run start:dev
 ```
 
-## Makefile Commands
+Server listens on `:8080`. TypeORM `synchronize: true` auto-creates schema in dev — disable for prod.
+
+## Scripts
 
 | Command | Description |
 |---------|-------------|
-| `make run` | Run server without live reload |
-| `make dev` | Run with live reload |
-| `make build` | Build binary to `bin/server` |
-| `make tidy` | Update dependencies |
-| `make db-up` | Start PostgreSQL container |
-| `make db-down` | Stop PostgreSQL container |
-| `make db-reset` | Reset database |
-| `make setup` | Install air |
+| `npm run start` | Run (no watch) |
+| `npm run start:dev` | Watch mode |
+| `npm run start:prod` | Run compiled `dist/main` |
+| `npm run build` | Compile to `dist/` |
+| `npm run lint` | ESLint + autofix |
+| `npm run format` | Prettier |
+| `npm run test` | Unit tests |
+| `npm run test:e2e` | E2E tests |
+| `npm run test:cov` | Coverage |
 
-## Environment Variables
+## Config (`config.yaml`)
 
-```
-DATABASE_URL=postgres://postgres:password@localhost:5432/gkj_eh?sslmode=disable
-JWT_SECRET=your-secret-key
-JWT_ACCESS_TTL=15m
-JWT_REFRESH_TTL=720h
-PORT=8080
-GOOGLE_CLIENT_ID=
-ALLOWED_ORIGINS=http://localhost:3000
+```yaml
+database:
+  host: localhost
+  port: 5434
+  username: postgres
+  password: password
+  name: gkj_eh
+jwt:
+  secret: ...        # CHANGE for prod
+  accessTtl: 15m
+  refreshTtl: 720h
+server:
+  port: "8080"
+  allowedOrigins:
+    - http://localhost:3000
 ```
 
 ## Token Strategy
 
 | Token | TTL | Purpose |
 |-------|-----|---------|
-| access | 15 min | Bearer header on API calls |
-| refresh | 30 days | Sent to `/api/auth/refresh` |
+| access | 15 min | `Authorization: Bearer <token>` on API calls |
+| refresh | 30 days | POST `/api/auth/refresh` |
 
 ## More
 
-- Architecture notes for Claude / new contributors: [`CLAUDE.md`](./CLAUDE.md)
-- Auth flow + how to add a new CRUD: [`docs/developer-guide.md`](./docs/developer-guide.md)
+- Architecture notes for Claude / contributors: [`CLAUDE.md`](./CLAUDE.md)
+- Auth flow + adding a new CRUD: [`docs/developer-guide.md`](./docs/developer-guide.md)

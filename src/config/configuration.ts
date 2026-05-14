@@ -19,6 +19,9 @@ interface Config {
     port: string;
     allowedOrigins: string[];
   };
+  google?: {
+    clientId?: string;
+  };
 }
 
 let config: Config;

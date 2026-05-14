@@ -96,6 +96,9 @@ Server listens on `:8080`. TypeORM `synchronize: true` auto-creates schema in de
 | `npm run test` | Unit tests |
 | `npm run test:e2e` | E2E tests |
 | `npm run test:cov` | Coverage |
+| `npm run seed` | Insert/upsert sample users, content, pelayan data (idempotent) |
+
+After seeding, login with `admin@gkj.test` / `admin123` (also `editor@gkj.test` / `editor123` and `viewer@gkj.test` / `viewer123`).
 
 ## Config (`config.yaml`)
 

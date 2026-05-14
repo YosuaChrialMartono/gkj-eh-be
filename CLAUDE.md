@@ -38,6 +38,7 @@ Keys: `database.{host,port,username,password,name}`, `jwt.{secret,accessTtl,refr
 - `npm run build` / `npm run start:prod`
 - `npm run lint` / `npm run format`
 - `npm run test` / `npm run test:e2e`
+- `npm run seed` — runs `src/scripts/seed.ts`; idempotent (checks before insert). Creates 3 users (admin/editor/viewer), 4 content rows (3 published + 1 draft), 4 pelayan roles, 6 persons, 3 upcoming Sunday services with assignments.
 
 ## Notes for Claude
 - This is a Node/NestJS project (was Go until commit `91c50f6`). Don't reach for Go tooling.

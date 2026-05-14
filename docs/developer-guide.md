@@ -3,296 +3,232 @@
 ## How Auth Works
 
 ### Flow
-1. `POST /api/auth/login` or `/register` → returns `{user, accessToken, refreshToken}`
-2. Client stores tokens (access in memory, refresh in httpOnly cookie)
-3. Every protected request includes `Authorization: Bearer <accessToken>`
-4. `middleware/auth.go` validates token and stores claims in request context
-5. `POST /api/auth/refresh` exchanges refresh token for new access+refresh pair
+1. `POST /api/auth/login` or `/register` → returns `{ user, accessToken, refreshToken }`
+2. Client stores tokens (access in memory, refresh in httpOnly cookie via BFF)
+3. Protected requests send `Authorization: Bearer <accessToken>`
+4. `JwtAuthGuard` (`src/auth/guards/jwt-auth.guard.ts`) → `JwtStrategy` (`src/auth/strategies/jwt.strategy.ts`) verifies the token and attaches the user to `request.user`
+5. `POST /api/auth/refresh` (with `JwtAuthGuard`) exchanges a valid token for a fresh pair
 
 ### Token Types
-Defined in `internal/jwt/jwt.go`:
+Signed in `src/auth/auth.service.ts` (`generateTokens`):
 
-| Token | TTL | Claims |
-|-------|-----|--------|
-| access | 15 min | sub, role, email, type=access |
-| refresh | 30 days | sub, type=refresh |
+| Token | TTL (default) | Payload |
+|-------|---------------|---------|
+| access | 15 min (`jwt.accessTtl`) | `sub`, `email` |
+| refresh | 30 days (`jwt.refreshTtl`) | `sub`, `email` |
+
+Both signed with the same `jwt.secret` from `config.yaml`. (Note: there's no separate refresh-token signing key or rotation list — adding one is a known follow-up.)
 
 ### Key Files
-- `internal/jwt/jwt.go` - Sign/verify tokens
-- `internal/middleware/auth.go` - Route protection
-- `internal/handler/auth_handler.go` - Login, register, refresh, logout
+- `src/auth/auth.service.ts` — register, login, refresh, logout, token signing
+- `src/auth/auth.controller.ts` — HTTP routes
+- `src/auth/strategies/jwt.strategy.ts` — Passport JWT verification
+- `src/auth/guards/jwt-auth.guard.ts` — guard alias for `AuthGuard('jwt')`
 
 ---
 
 ## Creating a New CRUD
 
-Example: Creating an "Announcements" feature.
+Example: an "Announcements" feature.
 
-### 1. Create Migration
+### 1. Define the entity
 
-File: `migrations/004_create_announcements.sql`
+`src/announcements/entities/announcement.entity.ts`:
 
-```sql
-CREATE TABLE IF NOT EXISTS announcements (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title TEXT NOT NULL,
-  body TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-```
+```ts
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+} from "typeorm";
 
-### 2. Create Model
+@Entity("announcements")
+export class Announcement {
+  @PrimaryGeneratedColumn("uuid")
+  id: string;
 
-File: `internal/model/announcement.go`
+  @Column()
+  title: string;
 
-```go
-package model
+  @Column({ type: "text", nullable: true })
+  body?: string;
 
-import "time"
-
-type Announcement struct {
-    ID        string    `json:"id"`
-    Title     string    `json:"title"`
-    Body      string    `json:"body"`
-    CreatedAt time.Time `json:"createdAt"`
-}
-
-type AnnouncementCreateInput struct {
-    Title string `json:"title"`
-    Body  string `json:"body"`
-}
-
-type AnnouncementUpdateInput = AnnouncementCreateInput
-```
-
-### 3. Create Store
-
-File: `internal/store/announcement_store.go`
-
-```go
-package store
-
-import (
-    "context"
-    "database/sql"
-    "errors"
-
-    "github.com/gkj-eben-haezer/gkj-eh-be/internal/model"
-)
-
-type AnnouncementStore struct {
-    db *sql.DB
-}
-
-func NewAnnouncementStore(db *sql.DB) *AnnouncementStore {
-    return &AnnouncementStore{db: db}
-}
-
-func (s *AnnouncementStore) List(ctx context.Context) ([]model.Announcement, error) {
-    rows, err := s.db.QueryContext(ctx,
-        "SELECT id, title, body, created_at FROM announcements ORDER BY created_at DESC")
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
-
-    var items []model.Announcement
-    for rows.Next() {
-        var a model.Announcement
-        if err := rows.Scan(&a.ID, &a.Title, &a.Body, &a.CreatedAt); err != nil {
-            return nil, err
-        }
-        items = append(items, a)
-    }
-    return items, rows.Err()
-}
-
-func (s *AnnouncementStore) GetByID(ctx context.Context, id string) (*model.Announcement, error) {
-    var a model.Announcement
-    err := s.db.QueryRowContext(ctx,
-        "SELECT id, title, body, created_at FROM announcements WHERE id = $1", id).
-        Scan(&a.ID, &a.Title, &a.Body, &a.CreatedAt)
-    if errors.Is(err, sql.ErrNoRows) {
-        return nil, nil
-    }
-    return &a, err
-}
-
-func (s *AnnouncementStore) Create(ctx context.Context, in model.AnnouncementCreateInput) (*model.Announcement, error) {
-    var a model.Announcement
-    err := s.db.QueryRowContext(ctx,
-        "INSERT INTO announcements (title, body) VALUES ($1, $2) RETURNING id, title, body, created_at",
-        in.Title, in.Body).
-        Scan(&a.ID, &a.Title, &a.Body, &a.CreatedAt)
-    return &a, err
-}
-
-func (s *AnnouncementStore) Update(ctx context.Context, id string, in model.AnnouncementUpdateInput) (*model.Announcement, error) {
-    var a model.Announcement
-    err := s.db.QueryRowContext(ctx,
-        "UPDATE announcements SET title = $1, body = $2 WHERE id = $3 RETURNING id, title, body, created_at",
-        in.Title, in.Body, id).
-        Scan(&a.ID, &a.Title, &a.Body, &a.CreatedAt)
-    return &a, err
-}
-
-func (s *AnnouncementStore) Delete(ctx context.Context, id string) error {
-    _, err := s.db.ExecContext(ctx, "DELETE FROM announcements WHERE id = $1", id)
-    return err
+  @CreateDateColumn()
+  createdAt: Date;
 }
 ```
 
-### 4. Create Handler
+`synchronize: true` in `app.module.ts` will auto-create the table in dev. For prod, switch to migrations.
 
-File: `internal/handler/announcement_handler.go`
+### 2. DTOs with validation
 
-```go
-package handler
+`src/announcements/dto/announcement.dto.ts`:
 
-import (
-    "encoding/json"
-    "net/http"
+```ts
+import { IsOptional, IsString, MinLength } from "class-validator";
 
-    "github.com/gkj-eben-haezer/gkj-eh-be/internal/model"
-    "github.com/gkj-eben-haezer/gkj-eh-be/internal/store"
-)
+export class CreateAnnouncementDto {
+  @IsString()
+  @MinLength(1)
+  title: string;
 
-type AnnouncementHandler struct {
-    announcements *store.AnnouncementStore
+  @IsOptional()
+  @IsString()
+  body?: string;
 }
 
-func NewAnnouncementHandler(a *store.AnnouncementStore) *AnnouncementHandler {
-    return &AnnouncementHandler{announcements: a}
-}
-
-func (h *AnnouncementHandler) List(w http.ResponseWriter, r *http.Request) {
-    items, err := h.announcements.List(r.Context())
-    if err != nil {
-        respondError(w, http.StatusInternalServerError, "failed to fetch announcements")
-        return
-    }
-    if items == nil {
-        items = []model.Announcement{}
-    }
-    respondJSON(w, http.StatusOK, items)
-}
-
-func (h *AnnouncementHandler) GetByID(w http.ResponseWriter, r *http.Request) {
-    id := chi.URLParam(r, "id")
-    item, err := h.announcements.GetByID(r.Context(), id)
-    if err != nil {
-        respondError(w, http.StatusInternalServerError, "failed to fetch announcement")
-        return
-    }
-    if item == nil {
-        respondError(w, http.StatusNotFound, "announcement not found")
-        return
-    }
-    respondJSON(w, http.StatusOK, item)
-}
-
-func (h *AnnouncementHandler) Create(w http.ResponseWriter, r *http.Request) {
-    var in model.AnnouncementCreateInput
-    if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-        respondError(w, http.StatusBadRequest, "invalid request body")
-        return
-    }
-
-    item, err := h.announcements.Create(r.Context(), in)
-    if err != nil {
-        respondError(w, http.StatusInternalServerError, "failed to create announcement")
-        return
-    }
-    respondJSON(w, http.StatusCreated, item)
-}
-
-func (h *AnnouncementHandler) Update(w http.ResponseWriter, r *http.Request) {
-    id := chi.URLParam(r, "id")
-    var in model.AnnouncementUpdateInput
-    if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-        respondError(w, http.StatusBadRequest, "invalid request body")
-        return
-    }
-
-    item, err := h.announcements.Update(r.Context(), id, in)
-    if err != nil {
-        respondError(w, http.StatusInternalServerError, "failed to update announcement")
-        return
-    }
-    respondJSON(w, http.StatusOK, item)
-}
-
-func (h *AnnouncementHandler) Delete(w http.ResponseWriter, r *http.Request) {
-    id := chi.URLParam(r, "id")
-    if err := h.announcements.Delete(r.Context(), id); err != nil {
-        respondError(w, http.StatusInternalServerError, "failed to delete announcement")
-        return
-    }
-    respondJSON(w, http.StatusOK, map[string]bool{"success": true})
+export class UpdateAnnouncementDto {
+  @IsOptional() @IsString() title?: string;
+  @IsOptional() @IsString() body?: string;
 }
 ```
 
-Add the import:
-```go
-import (
-    // ... other imports
-    "github.com/go-chi/chi/v5"
-)
+The global `ValidationPipe` (set in `main.ts`) strips unknown fields and coerces types.
+
+### 3. Service
+
+`src/announcements/announcements.service.ts`:
+
+```ts
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { Announcement } from "./entities/announcement.entity";
+import {
+  CreateAnnouncementDto,
+  UpdateAnnouncementDto,
+} from "./dto/announcement.dto";
+
+@Injectable()
+export class AnnouncementsService {
+  constructor(
+    @InjectRepository(Announcement)
+    private repo: Repository<Announcement>,
+  ) {}
+
+  list() {
+    return this.repo.find({ order: { createdAt: "DESC" } });
+  }
+
+  async get(id: string) {
+    const found = await this.repo.findOne({ where: { id } });
+    if (!found) throw new NotFoundException();
+    return found;
+  }
+
+  create(dto: CreateAnnouncementDto) {
+    return this.repo.save(this.repo.create(dto));
+  }
+
+  async update(id: string, dto: UpdateAnnouncementDto) {
+    await this.get(id);
+    await this.repo.update(id, dto);
+    return this.get(id);
+  }
+
+  async delete(id: string) {
+    await this.get(id);
+    await this.repo.delete(id);
+  }
+}
 ```
 
-### 5. Register Routes
+### 4. Controller
 
-In `cmd/server/main.go`:
+`src/announcements/announcements.controller.ts`:
 
-```go
-// Add store
-announcements := store.NewAnnouncementStore(database)
+```ts
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  UseGuards,
+} from "@nestjs/common";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { AnnouncementsService } from "./announcements.service";
+import {
+  CreateAnnouncementDto,
+  UpdateAnnouncementDto,
+} from "./dto/announcement.dto";
 
-// Add handler
-announcementH := handler.NewAnnouncementHandler(announcements)
+@Controller("api/announcements")
+@UseGuards(JwtAuthGuard)
+export class AnnouncementsController {
+  constructor(private svc: AnnouncementsService) {}
 
-// Add routes (in the protected group)
-r.Get("/announcements", announcementH.List)
-r.Post("/announcements", announcementH.Create)
-r.Get("/announcements/{id}", announcementH.GetByID)
-r.Put("/announcements/{id}", announcementH.Update)
-r.Delete("/announcements/{id}", announcementH.Delete)
+  @Get() list() { return this.svc.list(); }
+  @Get(":id") get(@Param("id") id: string) { return this.svc.get(id); }
+  @Post() create(@Body() dto: CreateAnnouncementDto) { return this.svc.create(dto); }
+  @Put(":id") update(@Param("id") id: string, @Body() dto: UpdateAnnouncementDto) {
+    return this.svc.update(id, dto);
+  }
+  @Delete(":id") delete(@Param("id") id: string) { return this.svc.delete(id); }
+}
 ```
+
+Remove `@UseGuards(JwtAuthGuard)` (or carve out specific methods) for public access.
+
+### 5. Module
+
+`src/announcements/announcements.module.ts`:
+
+```ts
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { Announcement } from "./entities/announcement.entity";
+import { AnnouncementsService } from "./announcements.service";
+import { AnnouncementsController } from "./announcements.controller";
+
+@Module({
+  imports: [TypeOrmModule.forFeature([Announcement])],
+  controllers: [AnnouncementsController],
+  providers: [AnnouncementsService],
+})
+export class AnnouncementsModule {}
+```
+
+### 6. Wire into `AppModule`
+
+In `src/app.module.ts`:
+
+- Import `Announcement` and add it to the `entities: [...]` array
+- Import `AnnouncementsModule` and add it to `imports: [...]`
+
+Restart `npm run start:dev`; `synchronize: true` creates the table on boot.
 
 ---
 
 ## Frontend Integration
 
-### What the Frontend Needs to Do
+### What the Frontend Does
 
-1. **Login/Register** → Call `/api/auth/login` or `/api/auth/register`
-2. **Store Tokens**:
-   - `accessToken` → in memory (state management)
-   - `refreshToken` → httpOnly cookie (set by BFF)
-3. **Protected Requests** → Add header:
-   ```
-   Authorization: Bearer <accessToken>
-   ```
-4. **Token Refresh** → On 401 response, call:
-   ```json
+1. **Login/Register** → `POST /api/auth/login` or `/register`
+2. **Store tokens**:
+   - `accessToken` in memory (or component state)
+   - `refreshToken` in an httpOnly cookie via the Next.js BFF
+3. **Protected requests** send `Authorization: Bearer <accessToken>`
+4. **Token refresh** on 401:
+   ```http
    POST /api/auth/refresh
-   { "refreshToken": "<from cookie>" }
+   Authorization: Bearer <still-valid-refresh-or-access-token>
    ```
-   → Returns new `{accessToken, refreshToken}` pair
+   Note: `auth.controller.ts` currently guards `/refresh` with `JwtAuthGuard`, so the client must send a valid (non-expired) token. Real refresh-token rotation is not implemented yet.
 
-### Public vs Protected Routes
+### Public vs Protected
 
-| Backend Route | Frontend Access |
-|---------------|-----------------|
-| `/api/content/public*` | No auth needed |
-| `/api/content/*` | Requires JWT |
-| `/api/pelayan/*` | Requires JWT |
+| Route | Auth |
+|-------|------|
+| `/api/auth/*` | public |
+| `/api/content/public*` | public |
+| `/api/content/*` (other) | JWT |
+| `/api/pelayan/*` | JWT |
+| `/api/users/me` | JWT |
 
-### BFF Pattern
-
-The frontend uses a Next.js BFF pattern:
-- `app/api/auth/login/route.ts` → proxies to backend
-- Sets httpOnly cookie for refresh token
-- Returns access token to client
-
-See `docs/plan.md` section "Frontend Changes" for details.
+### BFF Pattern (Next.js frontend)
+- `app/api/auth/login/route.ts` proxies to this backend, sets the refresh cookie, returns the access token to the browser.
+- Server-side routes that need the API forward the access token from the cookie/header on each call.

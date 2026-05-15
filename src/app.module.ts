@@ -7,12 +7,15 @@ import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";
 import { ContentModule } from "./content/content.module";
 import { PelayanModule } from "./pelayan/pelayan.module";
+import { ReportsModule } from "./reports/reports.module";
+import { MembersModule } from "./members/members.module";
 import { User } from "./users/entities/user.entity";
 import { Content } from "./content/entities/content.entity";
 import { PelayanRole } from "./pelayan/entities/pelayan-role.entity";
 import { PelayanPerson } from "./pelayan/entities/pelayan-person.entity";
 import { PelayanServiceEntity } from "./pelayan/entities/pelayan-service.entity";
 import { PelayanAssignment } from "./pelayan/entities/pelayan-assignment.entity";
+import { Report } from "./reports/entities/report.entity";
 
 @Module({
   imports: [
@@ -36,6 +39,7 @@ import { PelayanAssignment } from "./pelayan/entities/pelayan-assignment.entity"
             PelayanPerson,
             PelayanServiceEntity,
             PelayanAssignment,
+            Report,
           ],
           synchronize: true,
         };
@@ -45,6 +49,8 @@ import { PelayanAssignment } from "./pelayan/entities/pelayan-assignment.entity"
     UsersModule,
     ContentModule,
     PelayanModule,
+    ReportsModule,
+    MembersModule,
   ],
 })
 export class AppModule {}

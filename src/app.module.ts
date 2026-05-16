@@ -9,6 +9,7 @@ import { ContentModule } from "./content/content.module";
 import { PelayanModule } from "./pelayan/pelayan.module";
 import { ReportsModule } from "./reports/reports.module";
 import { MembersModule } from "./members/members.module";
+import { UploadsModule } from "./uploads/uploads.module";
 import { User } from "./users/entities/user.entity";
 import { Content } from "./content/entities/content.entity";
 import { PelayanRole } from "./pelayan/entities/pelayan-role.entity";
@@ -51,6 +52,7 @@ import { Report } from "./reports/entities/report.entity";
     PelayanModule,
     ReportsModule,
     MembersModule,
+    UploadsModule,
   ],
 })
 export class AppModule {}

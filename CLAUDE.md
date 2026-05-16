@@ -1,5 +1,8 @@
 # CLAUDE.md
 
+**Read `handoff/README.md` first** for current session state (branches, open TODOs).
+**Read `docs/`** for permanent reference (architecture, running, tests, gotchas).
+
 NestJS REST API backend for GKJ Eben-Haezer church content + service-scheduling system.
 
 ## Stack

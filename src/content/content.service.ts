@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Content } from "./entities/content.entity";
+import { User } from "../users/entities/user.entity";
 import {
   CreateContentDto,
   UpdateContentDto,
@@ -16,6 +17,21 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
+// Author projection — NEVER includes `password`. Public callers get the
+// minimal shape; authenticated callers get the richer (still password-free) one.
+export interface PublicAuthor {
+  name: string;
+  avatar: string | null;
+}
+export interface PrivateAuthor extends PublicAuthor {
+  email: string;
+  role: string;
+}
+
+export interface ContentResponse extends Omit<Content, "author"> {
+  author: PublicAuthor | PrivateAuthor | null;
+}
+
 @Injectable()
 export class ContentService {
   constructor(
@@ -23,12 +39,43 @@ export class ContentService {
     private contentRepository: Repository<Content>,
   ) {}
 
-  async findAll(query: ContentQueryDto): Promise<PaginatedResult<Content>> {
+  private toPublicAuthor(user?: User | null): PublicAuthor | null {
+    if (!user) return null;
+    return { name: user.name, avatar: user.avatar ?? null };
+  }
+
+  private toPrivateAuthor(user?: User | null): PrivateAuthor | null {
+    if (!user) return null;
+    return {
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar ?? null,
+      role: user.role,
+    };
+  }
+
+  private toResponse(
+    content: Content,
+    visibility: "public" | "private",
+  ): ContentResponse {
+    const { author, ...rest } = content;
+    return {
+      ...rest,
+      author:
+        visibility === "private"
+          ? this.toPrivateAuthor(author)
+          : this.toPublicAuthor(author),
+    };
+  }
+
+  async findAll(query: ContentQueryDto): Promise<PaginatedResult<ContentResponse>> {
     const page = parseInt(query.page || "1", 10);
     const limit = parseInt(query.limit || "10", 10);
     const skip = (page - 1) * limit;
 
-    const qb = this.contentRepository.createQueryBuilder("content");
+    const qb = this.contentRepository
+      .createQueryBuilder("content")
+      .leftJoinAndSelect("content.author", "author");
 
     if (query.type) {
       qb.andWhere("content.type = :type", { type: query.type });
@@ -52,7 +99,7 @@ export class ContentService {
     const [data, total] = await qb.skip(skip).take(limit).getManyAndCount();
 
     return {
-      data,
+      data: data.map((c) => this.toResponse(c, "private")),
       total,
       page,
       limit,
@@ -60,13 +107,16 @@ export class ContentService {
     };
   }
 
-  async findPublic(query: ContentQueryDto): Promise<PaginatedResult<Content>> {
+  async findPublic(
+    query: ContentQueryDto,
+  ): Promise<PaginatedResult<ContentResponse>> {
     const page = parseInt(query.page || "1", 10);
     const limit = parseInt(query.limit || "10", 10);
     const skip = (page - 1) * limit;
 
     const qb = this.contentRepository
       .createQueryBuilder("content")
+      .leftJoinAndSelect("content.author", "author")
       .where("content.status = :status", { status: "published" });
 
     if (query.type) {
@@ -87,7 +137,7 @@ export class ContentService {
     const [data, total] = await qb.skip(skip).take(limit).getManyAndCount();
 
     return {
-      data,
+      data: data.map((c) => this.toResponse(c, "public")),
       total,
       page,
       limit,
@@ -95,7 +145,9 @@ export class ContentService {
     };
   }
 
-  async findById(id: string): Promise<Content> {
+  // Raw entity loader for internal use (update/delete need the persistable
+  // entity, not the password-stripped projection).
+  private async findEntityById(id: string): Promise<Content> {
     const content = await this.contentRepository.findOne({
       where: { id },
       relations: ["author"],
@@ -106,7 +158,11 @@ export class ContentService {
     return content;
   }
 
-  async findBySlug(slug: string): Promise<Content> {
+  async findById(id: string): Promise<ContentResponse> {
+    return this.toResponse(await this.findEntityById(id), "private");
+  }
+
+  async findBySlug(slug: string): Promise<ContentResponse> {
     const content = await this.contentRepository.findOne({
       where: { slug, status: "published" },
       relations: ["author"],
@@ -114,30 +170,32 @@ export class ContentService {
     if (!content) {
       throw new NotFoundException("Content not found");
     }
-    return content;
+    return this.toResponse(content, "public");
   }
 
-  async create(dto: CreateContentDto, authorId: string): Promise<Content> {
+  async create(dto: CreateContentDto, authorId: string): Promise<ContentResponse> {
     const publishedAt = dto.publishedAt ? new Date(dto.publishedAt) : null;
     const content = this.contentRepository.create({
       ...dto,
       authorId,
       publishedAt,
     });
-    return this.contentRepository.save(content);
+    const saved = await this.contentRepository.save(content);
+    return this.findById(saved.id);
   }
 
-  async update(id: string, dto: UpdateContentDto): Promise<Content> {
-    const content = await this.findById(id);
+  async update(id: string, dto: UpdateContentDto): Promise<ContentResponse> {
+    const content = await this.findEntityById(id);
     Object.assign(content, dto);
     if (dto.publishedAt) {
       content.publishedAt = new Date(dto.publishedAt);
     }
-    return this.contentRepository.save(content);
+    const saved = await this.contentRepository.save(content);
+    return this.findById(saved.id);
   }
 
   async delete(id: string): Promise<void> {
-    const content = await this.findById(id);
+    const content = await this.findEntityById(id);
     await this.contentRepository.remove(content);
   }
 }

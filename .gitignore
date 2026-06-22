@@ -3,6 +3,7 @@ dist/
 build/
 *.log
 .env
+config.yaml
 .DS_Store
 *.tsbuildinfo
 tmp/

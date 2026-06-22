@@ -1,5 +1,5 @@
-import { NestFactory } from "@nestjs/core";
-import { ValidationPipe } from "@nestjs/common";
+import { NestFactory, Reflector } from "@nestjs/core";
+import { ValidationPipe, ClassSerializerInterceptor } from "@nestjs/common";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { join } from "path";
 import { mkdirSync } from "fs";
@@ -20,6 +20,12 @@ async function bootstrap() {
       transform: true,
       transformOptions: { enableImplicitConversion: true },
     }),
+  );
+
+  // Global safety net: strips @Exclude()-marked fields (e.g. User.password)
+  // from any response serialized by Nest.
+  app.useGlobalInterceptors(
+    new ClassSerializerInterceptor(app.get(Reflector)),
   );
 
   app.enableCors({

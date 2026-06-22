@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   ParseUUIDPipe,
 } from "@nestjs/common";
@@ -17,6 +18,8 @@ import {
   CreatePelayanServiceDto,
   UpdatePelayanServiceDto,
   UpsertPelayanAssignmentDto,
+  ServicesQueryDto,
+  AssignmentsQueryDto,
 } from "./dto/pelayan.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 
@@ -64,8 +67,8 @@ export class PelayanController {
   }
 
   @Get("services")
-  findAllServices() {
-    return this.pelayanService.findAllServices();
+  findAllServices(@Query() query: ServicesQueryDto) {
+    return this.pelayanService.findAllServices(query.month);
   }
 
   @Post("services")
@@ -87,8 +90,8 @@ export class PelayanController {
   }
 
   @Get("assignments")
-  findAllAssignments() {
-    return this.pelayanService.findAllAssignments();
+  findAllAssignments(@Query() query: AssignmentsQueryDto) {
+    return this.pelayanService.findAllAssignments(query.serviceId);
   }
 
   @Post("assignments")

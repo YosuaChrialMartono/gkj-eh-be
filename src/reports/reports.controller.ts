@@ -12,6 +12,9 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { CONTENT_MANAGER_ROLES } from "../users/user-role.enum";
 import { ReportsService } from "./reports.service";
 
 type Payload = Record<string, unknown>;
@@ -21,7 +24,7 @@ function isYmd(v: unknown): v is string {
 }
 
 @Controller("reports")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class ReportsController {
   constructor(private readonly svc: ReportsService) {}
 
@@ -35,6 +38,7 @@ export class ReportsController {
     return this.svc.get(id);
   }
 
+  @Roles(...CONTENT_MANAGER_ROLES)
   @Post()
   create(@Body() body: Payload) {
     if (!body || typeof body !== "object") {
@@ -49,6 +53,7 @@ export class ReportsController {
     return this.svc.create(body);
   }
 
+  @Roles(...CONTENT_MANAGER_ROLES)
   @Put(":id")
   update(@Param("id") id: string, @Body() body: Payload) {
     if (!body || typeof body !== "object") {
@@ -66,6 +71,7 @@ export class ReportsController {
     return this.svc.update(id, body);
   }
 
+  @Roles(...CONTENT_MANAGER_ROLES)
   @Delete(":id")
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param("id") id: string) {

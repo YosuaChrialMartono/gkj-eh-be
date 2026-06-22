@@ -17,6 +17,23 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
+const MAX_PAGE_SIZE = 100;
+
+// Clamp paging so a hostile/garbled ?limit=999999 or ?page=-1 can't exhaust
+// memory or the DB. NaN falls back to the defaults.
+function parsePaging(query: ContentQueryDto): {
+  page: number;
+  limit: number;
+  skip: number;
+} {
+  const page = Math.max(1, parseInt(query.page || "1", 10) || 1);
+  const limit = Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(1, parseInt(query.limit || "10", 10) || 10),
+  );
+  return { page, limit, skip: (page - 1) * limit };
+}
+
 // Author projection — NEVER includes `password`. Public callers get the
 // minimal shape; authenticated callers get the richer (still password-free) one.
 export interface PublicAuthor {
@@ -68,10 +85,10 @@ export class ContentService {
     };
   }
 
-  async findAll(query: ContentQueryDto): Promise<PaginatedResult<ContentResponse>> {
-    const page = parseInt(query.page || "1", 10);
-    const limit = parseInt(query.limit || "10", 10);
-    const skip = (page - 1) * limit;
+  async findAll(
+    query: ContentQueryDto,
+  ): Promise<PaginatedResult<ContentResponse>> {
+    const { page, limit, skip } = parsePaging(query);
 
     const qb = this.contentRepository
       .createQueryBuilder("content")
@@ -110,9 +127,7 @@ export class ContentService {
   async findPublic(
     query: ContentQueryDto,
   ): Promise<PaginatedResult<ContentResponse>> {
-    const page = parseInt(query.page || "1", 10);
-    const limit = parseInt(query.limit || "10", 10);
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = parsePaging(query);
 
     const qb = this.contentRepository
       .createQueryBuilder("content")
@@ -173,7 +188,10 @@ export class ContentService {
     return this.toResponse(content, "public");
   }
 
-  async create(dto: CreateContentDto, authorId: string): Promise<ContentResponse> {
+  async create(
+    dto: CreateContentDto,
+    authorId: string,
+  ): Promise<ContentResponse> {
     const publishedAt = dto.publishedAt ? new Date(dto.publishedAt) : null;
     const content = this.contentRepository.create({
       ...dto,

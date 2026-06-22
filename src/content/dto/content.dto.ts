@@ -1,3 +1,4 @@
+import { PartialType } from "@nestjs/mapped-types";
 import { IsOptional, IsString } from "class-validator";
 
 export class CreateContentDto {
@@ -28,7 +29,7 @@ export class CreateContentDto {
   publishedAt?: string;
 }
 
-export class UpdateContentDto extends CreateContentDto {}
+export class UpdateContentDto extends PartialType(CreateContentDto) {}
 
 export class ContentQueryDto {
   @IsOptional()

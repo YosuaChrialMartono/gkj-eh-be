@@ -1,7 +1,6 @@
-import { Module, NestModule, MiddlewareConsumer } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ConfigModule } from "@nestjs/config";
-import { APP_FILTER } from "@nestjs/core";
 import { getConfig } from "./config/configuration";
 import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";

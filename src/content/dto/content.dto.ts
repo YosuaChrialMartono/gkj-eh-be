@@ -1,5 +1,6 @@
 import { PartialType } from "@nestjs/mapped-types";
-import { IsOptional, IsString } from "class-validator";
+import { IsEnum, IsOptional, IsString } from "class-validator";
+import { ContentStatus, ContentType } from "../content.enums";
 
 export class CreateContentDto {
   @IsString()
@@ -8,11 +9,11 @@ export class CreateContentDto {
   @IsString()
   slug: string;
 
-  @IsString()
-  type: string;
+  @IsEnum(ContentType)
+  type: ContentType;
 
-  @IsString()
-  status: string;
+  @IsEnum(ContentStatus)
+  status: ContentStatus;
 
   @IsString()
   body: string;
@@ -41,12 +42,12 @@ export class ContentQueryDto {
   limit?: string;
 
   @IsOptional()
-  @IsString()
-  type?: string;
+  @IsEnum(ContentType)
+  type?: ContentType;
 
   @IsOptional()
-  @IsString()
-  status?: string;
+  @IsEnum(ContentStatus)
+  status?: ContentStatus;
 
   @IsOptional()
   @IsString()

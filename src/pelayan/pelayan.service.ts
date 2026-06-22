@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Raw, Repository } from "typeorm";
 import { PelayanRole } from "./entities/pelayan-role.entity";
 import { PelayanPerson } from "./entities/pelayan-person.entity";
 import { PelayanServiceEntity } from "./entities/pelayan-service.entity";
@@ -13,6 +13,14 @@ import {
   UpdatePelayanServiceDto,
   UpsertPelayanAssignmentDto,
 } from "./dto/pelayan.dto";
+
+/** "2026-06" -> "2026-07-01"; "2026-12" -> "2027-01-01". */
+export function nextMonthStart(month: string): string {
+  const [year, mon] = month.split("-").map(Number);
+  const nextYear = mon === 12 ? year + 1 : year;
+  const nextMon = mon === 12 ? 1 : mon + 1;
+  return `${nextYear}-${String(nextMon).padStart(2, "0")}-01`;
+}
 
 @Injectable()
 export class PelayanService {
@@ -76,8 +84,18 @@ export class PelayanService {
     await this.personRepository.remove(person);
   }
 
-  async findAllServices(): Promise<PelayanServiceEntity[]> {
-    return this.serviceRepository.find({ order: { date: "ASC" } });
+  async findAllServices(month?: string): Promise<PelayanServiceEntity[]> {
+    // Filter to a single calendar month via a half-open range
+    // [YYYY-MM-01, next-month-01) so we never build an invalid date literal.
+    const where = month
+      ? {
+          date: Raw((alias) => `${alias} >= :start AND ${alias} < :end`, {
+            start: `${month}-01`,
+            end: nextMonthStart(month),
+          }),
+        }
+      : {};
+    return this.serviceRepository.find({ where, order: { date: "ASC" } });
   }
 
   async createService(
@@ -111,8 +129,9 @@ export class PelayanService {
     await this.serviceRepository.remove(service);
   }
 
-  async findAllAssignments(): Promise<PelayanAssignment[]> {
+  async findAllAssignments(serviceId?: string): Promise<PelayanAssignment[]> {
     return this.assignmentRepository.find({
+      where: serviceId ? { serviceId } : {},
       relations: ["service", "role"],
     });
   }

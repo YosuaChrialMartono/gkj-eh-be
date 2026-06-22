@@ -31,9 +31,9 @@ describe("RolesGuard", () => {
 
   it("forbids a viewer from a content-manager route", () => {
     const guard = guardWithRequired([UserRole.Admin, UserRole.Editor]);
-    expect(() => guard.canActivate(contextFor({ role: UserRole.Viewer }))).toThrow(
-      ForbiddenException,
-    );
+    expect(() =>
+      guard.canActivate(contextFor({ role: UserRole.Viewer })),
+    ).toThrow(ForbiddenException);
   });
 
   it("forbids when no user / role is present", () => {

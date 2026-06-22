@@ -1,0 +1,27 @@
+# Copy to config.yaml and fill in real values, OR provide these via env vars
+# (env wins over this file). config.yaml is gitignored — never commit secrets.
+#
+# Env overrides: DB_HOST DB_PORT DB_USERNAME DB_PASSWORD DB_NAME
+#                JWT_SECRET JWT_ACCESS_TTL JWT_REFRESH_TTL
+#                PORT ALLOWED_ORIGINS (comma-separated) GOOGLE_CLIENT_ID
+
+database:
+  host: "localhost"
+  port: 5432
+  username: "postgres"
+  password: "change-me"
+  name: "gkj_eh"
+
+jwt:
+  # Generate a strong secret, e.g. `openssl rand -hex 32`
+  secret: "change-me-to-a-strong-random-secret"
+  accessTtl: "15m"
+  refreshTtl: "720h"
+
+server:
+  port: "8080"
+  allowedOrigins:
+    - "http://localhost:3000"
+
+google:
+  clientId: ""

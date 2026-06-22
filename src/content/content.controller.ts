@@ -18,6 +18,9 @@ import {
   ContentQueryDto,
 } from "./dto/content.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { CONTENT_MANAGER_ROLES } from "../users/user-role.enum";
 
 @Controller("content")
 export class ContentController {
@@ -45,13 +48,15 @@ export class ContentController {
     return this.contentService.findById(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...CONTENT_MANAGER_ROLES)
   @Post()
   create(@Body() dto: CreateContentDto, @Request() req: any) {
     return this.contentService.create(dto, req.user.id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...CONTENT_MANAGER_ROLES)
   @Put(":id")
   update(
     @Param("id", ParseUUIDPipe) id: string,
@@ -60,7 +65,8 @@ export class ContentController {
     return this.contentService.update(id, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...CONTENT_MANAGER_ROLES)
   @Delete(":id")
   remove(@Param("id", ParseUUIDPipe) id: string) {
     return this.contentService.delete(id);

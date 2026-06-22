@@ -13,6 +13,7 @@ import { getConfig } from "../config/configuration";
 interface TokenPayload {
   sub: string;
   email: string;
+  role: string;
 }
 
 @Injectable()
@@ -29,7 +30,7 @@ export class AuthService {
       passwordHash,
     });
 
-    const tokens = await this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
     return {
       user: {
         id: user.id,
@@ -55,7 +56,7 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    const tokens = await this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
     return {
       user: {
         id: user.id,
@@ -97,7 +98,7 @@ export class AuthService {
       avatar: payload.picture,
     });
 
-    const tokens = await this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
     return {
       user: {
         id: user.id,
@@ -115,7 +116,7 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const tokens = await this.generateTokens(user.id, user.email);
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
     return tokens;
   }
 
@@ -133,9 +134,9 @@ export class AuthService {
     return parseInt(ttl);
   }
 
-  private async generateTokens(userId: string, email: string) {
+  private async generateTokens(userId: string, email: string, role: string) {
     const config = getConfig();
-    const payload: TokenPayload = { sub: userId, email };
+    const payload: TokenPayload = { sub: userId, email, role };
 
     const accessToken = this.jwtService.sign(payload, {
       secret: config.jwt.secret,

@@ -11,6 +11,9 @@ import { diskStorage } from "multer";
 import { extname } from "path";
 import { randomUUID } from "crypto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { CONTENT_MANAGER_ROLES } from "../users/user-role.enum";
 
 const ALLOWED_MIME = new Set([
   "image/jpeg",
@@ -22,7 +25,8 @@ const ALLOWED_MIME = new Set([
 
 @Controller("uploads")
 export class UploadsController {
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...CONTENT_MANAGER_ROLES)
   @Post()
   @UseInterceptors(
     FileInterceptor("file", {

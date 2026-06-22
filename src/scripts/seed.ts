@@ -99,25 +99,25 @@ async function main() {
   const contentSeeds: Array<Partial<Content>> = [
     {
       title: "Selamat Datang di GKJ Eben Haezer",
-      type: "news",
+      type: "article",
       status: "published",
       body: "Selamat datang di website resmi GKJ Eben Haezer. Mari bertumbuh bersama dalam iman.",
     },
     {
       title: "Jadwal Ibadah Minggu Ini",
-      type: "news",
+      type: "announcement",
       status: "published",
       body: "Ibadah minggu ini akan diadakan pukul 07.00 dan 09.30 WIB.",
     },
     {
       title: "Renungan: Kasih yang Tidak Pernah Pudar",
-      type: "renungan",
+      type: "sermon",
       status: "published",
       body: "Kasih Allah tidak pernah pudar. Dalam segala keadaan, Ia selalu menyertai.",
     },
     {
       title: "Draft: Pengumuman Acara Natal",
-      type: "news",
+      type: "announcement",
       status: "draft",
       body: "Persiapan acara Natal sedang berlangsung. Detail menyusul.",
     },

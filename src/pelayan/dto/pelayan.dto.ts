@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt } from "class-validator";
+import { IsOptional, IsString, IsInt, Matches, IsUUID } from "class-validator";
 
 export class CreatePelayanRoleDto {
   @IsString()
@@ -47,6 +47,18 @@ export class UpdatePelayanServiceDto {
 
   @IsOptional()
   isExtra?: boolean;
+}
+
+export class ServicesQueryDto {
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}$/, { message: "month must be in YYYY-MM format" })
+  month?: string;
+}
+
+export class AssignmentsQueryDto {
+  @IsOptional()
+  @IsUUID()
+  serviceId?: string;
 }
 
 export class UpsertPelayanAssignmentDto {

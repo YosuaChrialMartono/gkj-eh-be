@@ -49,10 +49,15 @@ export function loadConfig(): Config {
   config = applyEnvOverrides(fileConfig);
 
   if (!config.jwt.secret || config.jwt.secret === PLACEHOLDER_SECRET) {
-    console.warn(
-      "[config] WARNING: jwt.secret is missing or the placeholder value. " +
-        "Set JWT_SECRET (env) to a strong random secret before deploying.",
-    );
+    const message =
+      "jwt.secret is missing or the placeholder value. " +
+      "Set JWT_SECRET (env) to a strong random secret.";
+    // Fail closed in production — booting with an empty/known signing secret
+    // would let anyone forge JWTs. Warn only in dev for convenience.
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(`[config] ${message}`);
+    }
+    console.warn(`[config] WARNING: ${message}`);
   }
 
   return config;
